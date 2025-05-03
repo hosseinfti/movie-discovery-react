@@ -56,7 +56,7 @@ const Home = () => {
       const data = await fetchMovies(page, query);
       setMovies(data.results);
       setTotalPages(data.total_pages > 500 ? 500 : data.total_pages);
-      useMovieCache.getState().setCache(query, page, data.results); // ذخیره در کش
+      useMovieCache.getState().setCache(query, page, data.results);
     } catch (err) {
       console.error("Error loading movies", err);
     }
