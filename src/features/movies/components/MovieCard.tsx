@@ -22,7 +22,6 @@ const MovieCard = ({ movie }: { movie: any }) => {
             ? movie.overview.slice(0, 150) + "..."
             : movie.overview}
         </Typography>
-        بص
       </CardContent>
     </Card>
   );
