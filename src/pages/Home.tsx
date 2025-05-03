@@ -21,6 +21,7 @@ import debounce from "lodash.debounce";
 
 import LoadingSpinner from "../shared/components/LoadingSpinner";
 import { Movie } from "../features/movies/types/movieTypes";
+import { useMovieCache } from "../store/useMovieCache";
 
 const MovieSearchInput = lazy(
   () => import("../features/movies/components/MovieSearchInput")
@@ -43,11 +44,19 @@ const Home = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const loadMovies = useCallback(async () => {
+    const cached = useMovieCache.getState().getFromCache(query);
+    if (cached) {
+      setMovies(cached);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await fetchMovies(page, query);
       setMovies(data.results);
       setTotalPages(data.total_pages > 500 ? 500 : data.total_pages);
+      useMovieCache.getState().setCache(query, data.results); // ذخیره در کش
     } catch (err) {
       console.error("Error loading movies", err);
     }
