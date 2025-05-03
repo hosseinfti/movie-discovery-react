@@ -21,6 +21,7 @@ import debounce from "lodash.debounce";
 
 import LoadingSpinner from "../shared/components/LoadingSpinner";
 import { Movie } from "../features/movies/types/movieTypes";
+import { useMovieCache } from "../store/useMovieCache";
 
 const MovieSearchInput = lazy(
   () => import("../features/movies/components/MovieSearchInput")
@@ -33,30 +34,34 @@ const MoviePagination = lazy(
 const Home = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [searchedTerm, setSearchedTerm] = useState<string>("");
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
-  const [previousQuery, setPreviousQuery] = useState<string>("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const query = searchParams.get("query") || "";
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const loadMovies = useCallback(async () => {
+    const cached = useMovieCache.getState().getFromCache(query, page);
+    if (cached) {
+      setMovies(cached);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await fetchMovies(page, query);
       setMovies(data.results);
       setTotalPages(data.total_pages > 500 ? 500 : data.total_pages);
+      useMovieCache.getState().setCache(query, page, data.results);
     } catch (err) {
       console.error("Error loading movies", err);
     }
     setLoading(false);
   }, [page, query]);
-
-  useEffect(() => {
-    loadMovies();
-  }, [page]);
 
   useEffect(() => {
     if (isMobile) {
@@ -66,22 +71,30 @@ const Home = () => {
     }
   }, [isMobile]);
 
-  const debouncedLoad = useMemo(
-    () =>
-      debounce((newQuery: string) => {
-        setPreviousQuery(newQuery);
-        loadMovies();
-      }, 500),
-    [loadMovies]
+  const debouncedLoad = useMemo(() => debounce(loadMovies, 500), [loadMovies]);
+  const debouncedSetSearchUrl = useMemo(
+    () => debounce(() => setSearchParams({ query: searchedTerm }), 500),
+    [searchedTerm]
   );
 
   useEffect(() => {
-    if (query === previousQuery) return;
-    debouncedLoad(query);
+    debouncedLoad();
     return () => {
       debouncedLoad.cancel();
     };
-  }, [query, previousQuery, debouncedLoad]);
+  }, [query, debouncedLoad]);
+
+  useEffect(() => {
+    debouncedSetSearchUrl();
+    return () => {
+      debouncedSetSearchUrl.cancel();
+    };
+  }, [searchedTerm]);
+
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const queryValue = event.target.value;
+    setSearchedTerm(queryValue);
+  };
 
   return (
     <Container
@@ -97,7 +110,7 @@ const Home = () => {
         Discover Movies
       </Typography>
 
-      <MovieSearchInput query={query} setSearchParams={setSearchParams} />
+      <MovieSearchInput query={query} onChange={handleSearch} />
 
       {isMobile && (
         <FormControlLabel
