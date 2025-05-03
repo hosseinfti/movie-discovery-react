@@ -8,6 +8,7 @@ const MovieCard = ({ movie }: { movie: any }) => {
       <CardMedia
         component="img"
         height="300"
+        loading="lazy"
         image={
           movie.poster_path
             ? `${IMAGE_URL}${movie.poster_path}`

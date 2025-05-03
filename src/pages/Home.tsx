@@ -1,85 +1,143 @@
-import { useEffect, useState } from "react";
 import {
+  Suspense,
+  lazy,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
+import {
+  Box,
   Container,
-  Grid,
-  TextField,
-  Pagination,
+  FormControlLabel,
+  Switch,
   Typography,
-  CircularProgress,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { fetchMovies } from "../features/movies/api/tmdApi";
-import MovieCard from "../features/movies/components/MovieCard";
-import debounce from "lodash.debounce";
 import { useSearchParams } from "react-router-dom";
+import debounce from "lodash.debounce";
+
+import LoadingSpinner from "../shared/components/LoadingSpinner";
+import { Movie } from "../features/movies/types/movieTypes";
+
+const MovieSearchInput = lazy(
+  () => import("../features/movies/components/MovieSearchInput")
+);
+const MovieGrid = lazy(() => import("../features/movies/components/MovieGrid"));
+const MoviePagination = lazy(
+  () => import("../shared/components/MoviePagination")
+);
 
 const Home = () => {
-  const [movies, setMovies] = useState([]);
+  const [movies, setMovies] = useState<Movie[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [previousQuery, setPreviousQuery] = useState<string>("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const query = searchParams.get("query") || "";
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-  //TODO : use the smaller components
-  const loadMovies = async () => {
+  const loadMovies = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchMovies(page, query);
       setMovies(data.results);
-      setTotalPages(data.total_pages > 500 ? 500 : data.total_pages); // API max limit
+      setTotalPages(data.total_pages > 500 ? 500 : data.total_pages);
     } catch (err) {
       console.error("Error loading movies", err);
     }
     setLoading(false);
-  };
+  }, [page, query]);
 
   useEffect(() => {
     loadMovies();
   }, [page]);
 
   useEffect(() => {
-    const debouncedLoad = debounce(loadMovies, 500);
-    debouncedLoad();
-    return () => debouncedLoad.cancel();
-  }, [query]);
+    if (isMobile) {
+      setViewMode("list");
+    } else {
+      setViewMode("grid");
+    }
+  }, [isMobile]);
 
-  const handleSearchMovies = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setSearchParams({ query: e.target.value });
-  };
+  const debouncedLoad = useMemo(
+    () =>
+      debounce((newQuery: string) => {
+        setPreviousQuery(newQuery);
+        loadMovies();
+      }, 500),
+    [loadMovies]
+  );
+
+  useEffect(() => {
+    if (query === previousQuery) return;
+    debouncedLoad(query);
+    return () => {
+      debouncedLoad.cancel();
+    };
+  }, [query, previousQuery, debouncedLoad]);
 
   return (
-    <Container sx={{ py: 4 }}>
+    <Container
+      sx={{
+        height: "100vh",
+        py: 4,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
       <Typography variant="h4" gutterBottom>
         Discover Movies
       </Typography>
 
-      <TextField
-        label="Search by title"
-        variant="outlined"
-        fullWidth
-        sx={{ mb: 4 }}
-        defaultValue={query}
-        onChange={handleSearchMovies}
-      />
+      <MovieSearchInput query={query} setSearchParams={setSearchParams} />
 
+      {isMobile && (
+        <FormControlLabel
+          sx={{ width: "100%", p: 0, m: 0 }}
+          control={
+            <Switch
+              checked={viewMode === "grid"}
+              onChange={() =>
+                setViewMode((prev) => (prev === "grid" ? "list" : "grid"))
+              }
+              name="toggleView"
+              color="primary"
+            />
+          }
+          label={viewMode === "grid" ? "Card View" : "List View"}
+        />
+      )}
       {loading ? (
-        <CircularProgress />
+        <Box
+          sx={{
+            height: "100%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <LoadingSpinner />
+        </Box>
       ) : (
         <>
-          <Grid container spacing={3}>
-            {movies.map((movie) => (
-              <Grid item xs={12} sm={6} md={4} key={movie.id}>
-                <MovieCard movie={movie} />
-              </Grid>
-            ))}
-          </Grid>
-
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(_, val) => setPage(val)}
-            sx={{ mt: 4, display: "flex", justifyContent: "center" }}
-          />
+          <MovieGrid viewMode={viewMode} movies={movies} />
+          <Suspense fallback={<LoadingSpinner />}>
+            {!loading && totalPages > 1 && (
+              <MoviePagination
+                page={page}
+                totalPages={totalPages}
+                setPage={setPage}
+              />
+            )}
+          </Suspense>
         </>
       )}
     </Container>
