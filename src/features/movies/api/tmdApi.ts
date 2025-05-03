@@ -10,8 +10,8 @@ export const fetchMovies = async (page = 1, query = '') => {
 
   const from = lastMonth.toISOString().split('T')[0];
   const to = now.toISOString().split('T')[0];
-
-  const response = await axios.get(`${BASE_URL}/discover/movie`, {
+  const param = query ? "search" : "discover"
+  const response = await axios.get(`${BASE_URL}/${param}/movie`, {
     params: {
       api_key: API_KEY,
       language: 'en-US',

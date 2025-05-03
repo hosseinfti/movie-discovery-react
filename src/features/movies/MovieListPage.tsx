@@ -4,6 +4,7 @@ import { Grid, Pagination, TextField, Container } from "@mui/material";
 import MovieCard from "./components/MovieCard";
 import { fetchMovies } from "./api/tmdApi";
 import { Movie } from "./types/movieTypes";
+import debounce from "lodash.debounce";
 
 export const MovieListPage = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -19,14 +20,24 @@ export const MovieListPage = () => {
 
   useEffect(() => {
     load();
-  }, [page, query]);
+  }, [page]);
+
+  useEffect(() => {
+    const debouncedLoad = debounce(load, 10000);
+    // debouncedLoad();
+    return () => debouncedLoad.cancel();
+  }, [query]);
+
+  const handleSearchMovies = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setQuery(e.target.value);
+  };
 
   return (
     <Container>
       <TextField
         label="Search by title"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={handleSearchMovies}
         fullWidth
         margin="normal"
       />
