@@ -3,15 +3,18 @@ import { Movie } from "../features/movies/types/movieTypes";
 
 interface MovieCacheStore {
   cache: Record<string, Movie[]>;
-  setCache: (query: string, movies: Movie[]) => void;
-  getFromCache: (query: string) => Movie[] | undefined;
+  setCache: (query: string, page: number, movies: Movie[]) => void;
+  getFromCache: (query: string, page: number) => Movie[] | undefined;
 }
+
+const makeCacheKey = (query: string, page: number) =>
+  `${query.toLowerCase()}::page:${page}`;
 
 export const useMovieCache = create<MovieCacheStore>((set, get) => ({
   cache: {},
-  setCache: (query, movies) =>
+  setCache: (query,page, movies) =>
     set((state) => ({
-      cache: { ...state.cache, [query]: movies },
+      cache: { ...state.cache, [makeCacheKey(query,page)]: movies },
     })),
-  getFromCache: (query) => get().cache[query],
+  getFromCache: (query,page) => get().cache[makeCacheKey(query,page)],
 }));

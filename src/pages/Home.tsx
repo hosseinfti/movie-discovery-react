@@ -34,6 +34,7 @@ const MoviePagination = lazy(
 const Home = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [searchedTerm, setSearchedTerm] = useState<string>("");
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
@@ -43,7 +44,7 @@ const Home = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const loadMovies = useCallback(async () => {
-    const cached = useMovieCache.getState().getFromCache(query);
+    const cached = useMovieCache.getState().getFromCache(query, page);
     if (cached) {
       setMovies(cached);
       setLoading(false);
@@ -55,16 +56,12 @@ const Home = () => {
       const data = await fetchMovies(page, query);
       setMovies(data.results);
       setTotalPages(data.total_pages > 500 ? 500 : data.total_pages);
-      useMovieCache.getState().setCache(query, data.results); // ذخیره در کش
+      useMovieCache.getState().setCache(query, page, data.results); // ذخیره در کش
     } catch (err) {
       console.error("Error loading movies", err);
     }
     setLoading(false);
   }, [page, query]);
-
-  useEffect(() => {
-    loadMovies();
-  }, [page]);
 
   useEffect(() => {
     if (isMobile) {
@@ -75,6 +72,10 @@ const Home = () => {
   }, [isMobile]);
 
   const debouncedLoad = useMemo(() => debounce(loadMovies, 500), [loadMovies]);
+  const debouncedSetSearchUrl = useMemo(
+    () => debounce(() => setSearchParams({ query: searchedTerm }), 500),
+    [searchedTerm]
+  );
 
   useEffect(() => {
     debouncedLoad();
@@ -83,9 +84,16 @@ const Home = () => {
     };
   }, [query, debouncedLoad]);
 
+  useEffect(() => {
+    debouncedSetSearchUrl();
+    return () => {
+      debouncedSetSearchUrl.cancel();
+    };
+  }, [searchedTerm]);
+
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     const queryValue = event.target.value;
-    setSearchParams({ query: queryValue });
+    setSearchedTerm(queryValue);
   };
 
   return (

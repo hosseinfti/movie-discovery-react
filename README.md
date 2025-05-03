@@ -4,7 +4,7 @@ This app allows users to search for movies, view them in grid/list layout, and p
 
 ## Features
 
-- Search with debounce and query sync in URL
+- Search with debounce and query sync in URL with ability of check the prev search query with browser back button
 - Mobile-friendly list/grid toggle
 - Lazy-loaded components
 
