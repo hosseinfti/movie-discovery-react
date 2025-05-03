@@ -37,7 +37,6 @@ const Home = () => {
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
-  const [previousQuery, setPreviousQuery] = useState<string>("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const query = searchParams.get("query") || "";
   const theme = useTheme();
@@ -75,22 +74,19 @@ const Home = () => {
     }
   }, [isMobile]);
 
-  const debouncedLoad = useMemo(
-    () =>
-      debounce((newQuery: string) => {
-        setPreviousQuery(newQuery);
-        loadMovies();
-      }, 500),
-    [loadMovies]
-  );
+  const debouncedLoad = useMemo(() => debounce(loadMovies, 500), [loadMovies]);
 
   useEffect(() => {
-    if (query === previousQuery) return;
-    debouncedLoad(query);
+    debouncedLoad();
     return () => {
       debouncedLoad.cancel();
     };
-  }, [query, previousQuery, debouncedLoad]);
+  }, [query, debouncedLoad]);
+
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const queryValue = event.target.value;
+    setSearchParams({ query: queryValue });
+  };
 
   return (
     <Container
@@ -106,7 +102,7 @@ const Home = () => {
         Discover Movies
       </Typography>
 
-      <MovieSearchInput query={query} setSearchParams={setSearchParams} />
+      <MovieSearchInput query={query} onChange={handleSearch} />
 
       {isMobile && (
         <FormControlLabel
