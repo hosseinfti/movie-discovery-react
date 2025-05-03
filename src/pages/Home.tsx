@@ -9,14 +9,18 @@ import {
 } from "@mui/material";
 import { fetchMovies } from "../features/movies/api/tmdApi";
 import MovieCard from "../features/movies/components/MovieCard";
+import debounce from "lodash.debounce";
+import { useSearchParams } from "react-router-dom";
 
 const Home = () => {
   const [movies, setMovies] = useState([]);
-  const [query, setQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const query = searchParams.get("query") || "";
 
+  //TODO : use the smaller components
   const loadMovies = async () => {
     setLoading(true);
     try {
@@ -31,7 +35,17 @@ const Home = () => {
 
   useEffect(() => {
     loadMovies();
-  }, [page, query]);
+  }, [page]);
+
+  useEffect(() => {
+    const debouncedLoad = debounce(loadMovies, 500);
+    debouncedLoad();
+    return () => debouncedLoad.cancel();
+  }, [query]);
+
+  const handleSearchMovies = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setSearchParams({ query: e.target.value });
+  };
 
   return (
     <Container sx={{ py: 4 }}>
@@ -44,10 +58,8 @@ const Home = () => {
         variant="outlined"
         fullWidth
         sx={{ mb: 4 }}
-        onChange={(e) => {
-          setPage(1);
-          setQuery(e.target.value);
-        }}
+        defaultValue={query}
+        onChange={handleSearchMovies}
       />
 
       {loading ? (
