@@ -18,9 +18,9 @@ const MovieCard = ({ movie }: { movie: any }) => {
       <CardContent>
         <Typography variant="h6">{movie.title}</Typography>
         <Typography variant="body2" color="text.secondary">
-          {movie.overview.length > 150
-            ? movie.overview.slice(0, 150) + "..."
-            : movie.overview}
+          {movie?.overview?.length > 150
+            ? movie?.overview?.slice(0, 150) + "..."
+            : movie?.overview}
         </Typography>
       </CardContent>
     </Card>
